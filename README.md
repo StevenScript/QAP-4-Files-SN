@@ -1,2 +1,10 @@
 # QAP-4-Files-SN
-One Stop Insurance Program - File + Readme for QAP 4
+
+Web development folder containing:
+
+- HTML
+- JavaScript file
+
+Python folder containing:
+
+- One Stop Insurance Program
