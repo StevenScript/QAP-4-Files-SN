@@ -1,8 +1,7 @@
 # Description: Insurance Policy Management and Calculation System for One Stop Insurance
 # Name: Steven Norris
 # Date Created: 03/14/2024
-# Date Last Modified: 03/21/2024
-
+# Date Last Modified: 03/24/2024
 
 
 #   |-----------|   #     
@@ -41,195 +40,222 @@ NUM_PAYMENTS = 8
 claims = []  
 
 
+
 #   |-----------------|   #
 #   | INPUT FUNCTIONS |   #
 #   |-----------------|   #
 
-def is_valid_input(input_value, validation_type):
+def is_valid_input(input_value, validation_types):
     """
-    Validates the input based on the given validation type, as well as checks all values to ensure they are not empty.
+    Validates the input based on the given validation type or types, supporting a wide range of validations.
+    Designed for flexibility and broad usability with detailed error messages for guidance.
+    Now supports multiple validation types.
 
     Parameters:
         input_value (str): The value to be validated.
-        validation_type (str): The type of validation to apply. 
+        validation_types (Union[str, List[str]]): The type(s) of validation to apply.
 
     Returns:
-        bool: True if the input is valid according to the validation type, False otherwise.
+        tuple: A tuple containing a boolean indicating if the input is valid, and a message.
     """
+    # Ensure validation_types is a list even if a single validation type is provided
+    if isinstance(validation_types, str):
+        validation_types = [validation_types]
 
-    # Universal check for blank input    
-    if not input_value.strip():
-        return False
+    input_value = input_value.strip()
 
-    #Exits loop if no other validations needed. 
-    elif validation_type == 'empty':
-        return True
+    if not input_value:
+        return False, "Input cannot be blank."
 
-    if validation_type == 'name':
-        # Checks if the input contains valid naming characters
-        return set(input_value).issubset(ALLOWED_NAME_CHARACTERS)
+    for validation_type in validation_types:
+        if validation_type == 'long':
+            if len(input_value) > 14:
+                return False, "Input exceeds the maximum allowed length of 10 characters."
+            
+        elif validation_type == 'short':
+            if len(input_value) > 5:
+                return False, "Input exceeds the maximum allowed length of 5 characters."
+        
+        elif validation_type == 'name':
+            if not set(input_value).issubset(ALLOWED_NAME_CHARACTERS):
+                return False, "Invalid name. Please use only allowed characters."
+            
+        elif validation_type == 'phone_number':
+            if not (len(input_value) == 10 and input_value.isdigit()):
+                return False, "Invalid phone number. Please enter a 10-digit numeric phone number."
+            
+        elif validation_type == 'province':
+            if input_value.upper() not in VALID_PROVINCES:
+                return False, "Invalid province. Please enter a valid abbreviation."
+            
+        elif validation_type == 'postal_code':
+            if not (len(input_value) == POSTAL_CODE_LENGTH and input_value[0].isalpha() and input_value[1].isdigit()):
+                return False, "Invalid postal code format."
+            
+        elif validation_type == 'yes_no':
+            if input_value.lower() not in ['y', 'n']:
+                return False, "Data Entry Error - Answer Yes or No by typing Y or N."
+            
+        elif validation_type == 'day':
+            try:
+                day = int(input_value)
+                if not 1 <= day <= 31:
+                    return False, "Invalid day. Please enter a value between 1 and 31."
+            except ValueError:
+                return False, "Invalid day. Please enter a numeric value."
+            
+        elif validation_type == 'month':
+            try:
+                month = int(input_value)
+                if not 1 <= month <= 12:
+                    return False, "Invalid month. Please enter a value between 1 and 12."
+            except ValueError:
+                return False, "Invalid month. Please enter a numeric value."
+            
+        elif validation_type == 'year':
+            try:
+                year = int(input_value)
+                if not 1900 <= year <= 2150:
+                    return False, "Invalid year. Please enter a value between 1900 and 2150."
+            except ValueError:
+                return False, "Invalid year. Please enter a numeric value."
+            
+        elif validation_type == 'positive_integer':
+            if not (input_value.isdigit() and int(input_value) > 0):
+                return False, "Invalid input. Please enter a positive integer."
+            
+        elif validation_type == 'positive_float':
+            try:
+                value = float(input_value)
+                if value <= 0:
+                    return False, "Value must be a positive float."
+            except ValueError:
+                return False, "Invalid input. Please enter a valid floating-point number."
+        
+    return True, "Valid input."
 
-    elif validation_type == 'phone_number':
-        # Checks if the input is numerical and exactly 10 digits
-        return input_value.isdigit() and len(input_value) == PHONE_NUMBER_LENGTH
-
-    elif validation_type == 'postal_code':
-        # Canadian postal code format: alternating letters and digits with no spaces
-        return len(input_value) == POSTAL_CODE_LENGTH and \
-               all(input_value[i].isalpha() for i in range(0, 6, 2)) and \
-               all(input_value[i].isdigit() for i in range(1, 6, 2))
-
-    elif validation_type == 'date':
-        # Date format: MM-DD-YYYY
-        try:
-            datetime.strptime(input_value, '%m-%d-%Y')
-            return True
-        except ValueError:
-            return False
-
-    elif validation_type == 'province':
-        # Checks if the input is a valid province
-        return input_value.upper().strip() in VALID_PROVINCES
-
-    elif validation_type == 'yes_no':
-        # Validate 'Y' or 'N' input, case-insensitive
-        input_value = input_value.upper()
-        return input_value.upper() in {'Y', 'N'}
-    
-    elif validation_type == 'positive_integer':
-        # Checks if the input is a digit and its integer representation is greater than 0
-        return input_value.isdigit() and int(input_value) > 0
-    
-    elif validation_type == 'positive_float':
-        # New validation logic for positive float values
-        try:
-            return float(input_value) > 0
-        except ValueError:
-            return False
-
-
-    else:
-        raise ValueError(f"Invalid validation type provided: {validation_type}")
-
-def prompt_and_validate(prompt_message, validation_type, error_message, initial_value=None):
-        """
-    Prompts the user for input and validates it. Optionally accepts an initial value to validate directly.
+def prompt_and_validate(prompt_message, validation_types, error_message, initial_value=None):
+    """
+    Prompts the user for input, validates it according to the specified type(s), and includes a confirmation step.
+    Designed to work with a wide range of input types and validation criteria. Now supports multiple validation types.
 
     Parameters:
         prompt_message (str): The message to display when prompting the user.
-        validation_type (str): The type of validation to apply.
+        validation_types (Union[str, List[str]]): The type(s) of validation to apply.
         error_message (str): The message to display upon validation failure.
         initial_value (str, optional): An initial value to validate without prompting. Defaults to None.
 
     Returns:
-        str: A validated input according to the validation type.
-        """
-        if initial_value is not None:
-            if is_valid_input(initial_value, validation_type):
+        str: A validated and confirmed input according to the validation type(s).
+    """
+    
+    if initial_value is not None:
+        is_valid, message = is_valid_input(initial_value, validation_types)
+        if is_valid:
+            confirmation_prompt = f"Confirm initial input '{initial_value}'? (Y/N): "
+            confirmation = input(confirmation_prompt).strip().upper()
+            confirmation_is_valid, _ = is_valid_input(confirmation, 'yes_no')
+            if confirmation_is_valid and confirmation == 'Y':
                 return initial_value
             else:
-                print(error_message)
+                print("Initial value not confirmed. Please enter the value again.")
+                print()
 
-        while True:
-            user_input = input(prompt_message)
-            if is_valid_input(user_input, validation_type):
+    while True:
+        user_input = input(prompt_message).strip()
+        is_valid, validation_message = is_valid_input(user_input, validation_types)
+        if is_valid:
+            confirmation_prompt = f"Confirm input '{user_input}'? (Y/N): "
+            confirmation = input(confirmation_prompt).strip().upper()
+            print()
+            confirmation_is_valid, _ = is_valid_input(confirmation, 'yes_no')
+            if confirmation_is_valid and confirmation == 'Y':
                 return user_input
-            print(error_message)
-    
+            else:
+                print("Input not confirmed. Please re-enter the value.")
+                print()
+        else:
+            print(f"{error_message}")
+            print(f"{validation_message}")
+            print()
+
 def collect_customer_info():
     """
     Collects customer information through prompts and validates each input according to specified criteria.
     The information collected includes personal details, address, contact, and insurance preferences.
-    
-    The validation is performed by a helper function `prompt_and_validate`
+    Validation is performed by a helper function `prompt_and_validate`.
     Upon successful validation, inputs are formatted appropriately (e.g., title casing for names, uppercasing for postal codes).
 
     Returns:
-        dict: A dictionary containing all the validated and formatted customer information, including:
-              - First Name
-              - Last Name
-              - Street Address
-              - City
-              - Province (as an abbreviation)
-              - Postal Code (in uppercase without spaces)
-              - Phone Number
-              - Number of Cars being insured (as an integer)
-              - Preferences for Extra Liability Coverage, Glass Coverage, and Loaner Car Coverage (as 'Y' or 'N')
+        dict: A dictionary containing all the validated and formatted customer information.
     """
-
-
-    # Prompt for first name, validate, and format.    
+    
     first_name = prompt_and_validate(
         "Enter customer's first name: ", 
-        'name',
-        "Invalid first name. Please use only allowed characters."
+        ['name', 'long'],  
+        "Please use only allowed characters and ensure the name is no longer than 5 characters."
     ).title()
-    
 
-    # Prompt for last name, validate, and format.
     last_name = prompt_and_validate(
         "Enter customer's last name: ", 
-        'name',
-        "Invalid last name. Please use only allowed characters."
+        ['name', 'long'],  
+        "Please use only allowed characters and ensure the name is no longer than 10 characters."
     ).title()
 
-    
-    # Prompt for street address, ensure it's not empty, and capitalize appropriately.
     address = prompt_and_validate(
         "Enter customer's street address: ", 
         'empty',  
-        "Invalid address. Please ensure the address is not empty."
+        "The address cannot be empty. Please enter a valid street address."
     )
-    address = string.capwords(address)
-
     
-    # Prompt for city, validate, and format.
-    city = prompt_and_validate(
+    city = string.capwords(prompt_and_validate(
         "Enter customer's city: ", 
-        'name',  
-        "Invalid city name. Please use only allowed characters."
-    ).title()
-    
+        ['name', 'empty'],  
+        "Please use only allowed characters for the city name and ensure it is not empty."
+    ))
 
-    # Prompt for province abbreviation, validate, and format to uppercase.
     province = prompt_and_validate(
         "Enter customer's province (abbreviation): ", 
-        'province',
-        "Invalid province. Please enter a valid abbreviation."
+        ['province', 'empty'],
+        "Please enter a valid province abbreviation. It cannot be empty."
     ).upper()
-    
-    
-    # Prompt for postal code, validate format, remove spaces, and convert to uppercase.
+
     postal_code = prompt_and_validate(
         "Please enter the postal code (Format: X1X1X1): ", 
-        'postal_code',
-        "Invalid postal code format."
+        ['postal_code', 'empty'],
+        "Please enter a valid postal code in the format X1X1X1 without spaces."
     ).upper().replace(" ", "")
-    
 
-    # Prompt for phone number, validate format.
     phone_number = prompt_and_validate(
         "Enter customer's phone number (10 digits): ", 
-        'phone_number',
-        "Invalid phone number. Please enter a 10-digit numeric phone number."
+        ['phone_number', 'empty'],
+        "Please enter a valid 10-digit numeric phone number without any spaces or special characters."
     )
-    
 
-    # Prompt for the number of cars, validate as positive integer, and convert to int.
     number_of_cars = int(prompt_and_validate(
         "Enter the number of cars being insured: ", 
-        'positive_integer',  
-        "Please enter a positive integer."
+        ['positive_integer', 'empty'],  
+        "Please enter a positive integer for the number of cars."
     ))
-    
 
-    # Prompt for insurance options, validate as yes or no.
-    extra_liability = prompt_and_validate("Do you want extra liability coverage? (Y/N): ", "yes_no", "Data Entry Error - Answer Yes or No by typing Y or N").upper()
-    glass_coverage = prompt_and_validate("Do you want glass coverage? (Y/N): ", "yes_no", "Data Entry Error - Answer Yes or No by typing Y or N").upper()
-    loaner_car = prompt_and_validate("Do you want a loaner car coverage?(Y/N): ", "yes_no", "Data Entry Error - Answer Yes or No by typing Y or N").upper()
-    
+    extra_liability = prompt_and_validate(
+        "Do you want extra liability coverage? (Y/N): ", 
+        'yes_no', 
+        "Please answer Yes or No by typing Y or N."
+    ).upper()
 
-    # Return a dictionary of all collected and formatted customer information.
+    glass_coverage = prompt_and_validate(
+        "Do you want glass coverage? (Y/N): ", 
+        'yes_no', 
+        "Please answer Yes or No by typing Y or N."
+    ).upper()
+
+    loaner_car = prompt_and_validate(
+        "Do you want a loaner car coverage? (Y/N): ", 
+        'yes_no', 
+        "Please answer Yes or No by typing Y or N."
+    ).upper()
+
     return {
         'first_name': first_name,
         'last_name': last_name,
@@ -245,54 +271,63 @@ def collect_customer_info():
     }
 
 def get_claims():
-    """
-    Collects claim data from the user in a loop until the user inputs 'done'. For each claim, the function prompts
-    for a claim number, claim date, and claim amount. It validates each entry according to specific criteria defined
-    by a 'prompt_and_validate' helper function. If a duplicate claim number is entered, the amount for the existing
-    claim is updated instead of creating a new claim.
-        
-    Returns:
-        list of dict: A list where each element is a dictionary containing the 'number', 'date', and 'amount' of a claim.
-                      If a claim number is duplicated, the original claim's amount is updated rather than adding a new claim.
-    """
-
-    # Initialize an empty list to store claim data
     claims = [] 
     
-    # Start the loop to continuously prompt for claim data
     while True:
-        user_input = input("Enter claim number (or 'done' to finish): ")
-        if user_input.lower() == 'done':
-            break
-    
-        # Validate the claim number. Note: The initial prompt is not used due to direct validation of user input.
-        claim_number = prompt_and_validate(
-            "Enter claim number: ",  # Placeholder prompt; not shown to user in this context. Used for sake of consistent validation structure.
-            "positive_integer",
-            "Invalid input. Please enter a valid claim number.",
-            initial_value=user_input
+        user_input = input("Enter claim number (or 'done' to finish): ").strip()
+        confirmation_prompt = f"Confirm initial input '{user_input}'? (Y/N): "
+        confirmation = input(confirmation_prompt).strip().upper()
+        confirmation_is_valid, _ = is_valid_input(confirmation, 'yes_no')
+        if confirmation_is_valid and confirmation == 'Y':
+            if user_input.lower() == 'done':
+                print()
+                break
+            if not user_input.isdigit():
+                print("Please enter a numeric value.")
+                print()
+                continue
+
+        
+        claim_number = user_input
+
+        # Prompt for and validate each component of the date
+        claim_year = prompt_and_validate(
+            "Enter the year of the claim date (YYYY): ",
+            "year",
+            "Invalid year. Please enter a valid year between 1900 and 2099."
         )
 
-        # Prompt and validate the claim date in MM-DD-YYYY format
-        claim_date = prompt_and_validate("Enter claim date (MM-DD-YYYY): ", "date", "Invalid date format or date. Please enter the date in MM-DD-YYYY format.")
+        claim_month = prompt_and_validate(
+            "Enter the month of the claim date (MM): ",
+            "month",
+            "Invalid month. Please enter a value between 1 and 12."
+        )
+
+        claim_day = prompt_and_validate(
+            "Enter the day of the claim date (DD): ",
+            "day",
+            "Invalid day. Please enter a value between 1 and 31."
+        )
+
+        # Combine the date components
+        claim_date = f"{claim_year}-{claim_month.zfill(2)}-{claim_day.zfill(2)}"
+
+        claim_amount = float(prompt_and_validate(
+            "Enter claim amount: $", 
+            "positive_float", 
+            "Enter a valid positive number for the amount."
+        ))
         
-        # Prompt and validate the claim amount as a positive float
-        claim_amount = float(prompt_and_validate("Enter claim amount: $", "positive_float", "Invalid amount. Please enter a valid number."))
-        
-        # Check for an existing claim with the same number, either updating the exting claim or adding it to the list.
         existing_claim = next((claim for claim in claims if claim['number'] == claim_number), None)
         if existing_claim:
-            # Update the amount of the existing claim
             print(f"Duplicate claim number found. Updating amount for claim number {claim_number}.")
             existing_claim['amount'] = claim_amount 
         else:
-            # If no duplicate, append the new claim data as a dictionary to the claims list
             claims.append({'number': claim_number, 'date': claim_date, 'amount': claim_amount})
 
-    # Return the list of claim dictionaries
     return claims
 
-def get_payment_info():
+def get_payment_info(total_cost):
     """
     Collects payment method and down payment amount from the user.
 
@@ -327,21 +362,22 @@ def get_payment_info():
     
     # Prompt for down payment amount if 'Down Pay' option is selected.
     if payment_method == 'Down Pay':
+        max_down_payment = total_cost - (MONTHLY_PAYMENT_PROCESSING_FEE * NUM_PAYMENTS)
         while True:
             try:
-                down_payment = input("Enter the amount of the down payment: $").strip()
-                down_payment = float(down_payment)
+                down_payment = float(input("Enter the amount of the down payment: $").strip())
                 if down_payment < 0:
-                    # Ensures down payment is a positive value.
                     print("The down payment cannot be negative. Please enter a positive value.")
-                    continue
-                break
+                elif down_payment > max_down_payment:
+                    print(f"The down payment must not exceed {format_currency(max_down_payment)}. Please enter a valid amount.")
+                else:
+                    break
             except ValueError:
-                # Handle non-numeric input.
                 print("Invalid amount. Please enter a numeric value.")
 
     # Return a tuple containing two elements
     return payment_method, down_payment
+
 
 
 #   |-----------------------|   #
@@ -457,6 +493,7 @@ def calculate_monthly_payments(total_cost, payment_method, down_payment=None):
     # Main workflow function
 
 
+
 #   |------------------|   #
 #   | OUTPUT FUNCTIONS |   #
 #   |------------------|   #
@@ -504,7 +541,7 @@ def prepare_customer_info_display(customer_info):
         "Full Name": full_name,
         "Phone Number": phone_number,
         "Street": address,
-        "City": city_province
+        "City": city_province 
     }
 
     # Return a dictionary formatted for display
@@ -539,10 +576,11 @@ def generate_and_display_receipt(customer_info, claims, premium_details, hst, to
     DisplayPolicyNumber = f"{NEXT_POLICY_NUMBER}"
 
     # Format current date and future payment dates using a datetime format helper
-    DisplayInvoiceDate = format_date(datetime.now())
+    DisplayInvoiceDate = datetime.now().strftime('%Y-%b-%d')
     
     # Calculate the first payment date as the first day of the next month
-    DisplayFirstPaymentDate = format_date((datetime.now().replace(day=28) + timedelta(days=4)).replace(day=1))
+    next_month = datetime.now().replace(day=28) + timedelta(days=4)
+    DisplayFirstPaymentDate = next_month.replace(day=1).strftime('%Y-%b-%d')
 
     # Format financial figures using a currency format helper
     DisplayPremium = format_currency(premium_details['premium'])
@@ -564,10 +602,10 @@ def generate_and_display_receipt(customer_info, claims, premium_details, hst, to
     # Format each claim for display, including claim number, date, and amount
     DisplayClaims = []
     for claim in claims:
-        claim_date_formatted = datetime.strptime(claim['date'], '%m-%d-%Y')
+        claim_date_formatted = datetime.strptime(claim['date'], '%Y-%m-%d').strftime('%Y-%b-%d')
         DisplayClaims.append({
             'number': claim['number'],
-            'date': format_date(claim_date_formatted),
+            'date': claim_date_formatted,
             'amount': format_currency(claim['amount'])
         })
 
@@ -585,8 +623,8 @@ def generate_and_display_receipt(customer_info, claims, premium_details, hst, to
     print(f"   |         ------- One Stop Insurance Policy --------         |")
     print(f"   |                       Policy - #{DisplayPolicyNumber:<10s}                 |")
     print(f"   |    -------------------              -------------------    |")
-    print(f"   | ---------- Current Invoice Date -- {DisplayInvoiceDate:>10s} ------------ |")
-    print(f"   | ----------   First Payment Date -- {DisplayFirstPaymentDate:>10s} ------------ |")             
+    print(f"   | ---------- Current Invoice Date -- {DisplayInvoiceDate:>10s} ----------- |")
+    print(f"   | ----------   First Payment Date -- {DisplayFirstPaymentDate:>10s} ----------- |")             
     print(f"   |____________________________________________________________|")
     print(f"   |          --------  Customer Information  --------          |")
     print(f"   |                                                            |")
@@ -621,7 +659,7 @@ def generate_and_display_receipt(customer_info, claims, premium_details, hst, to
         print(f"   |              Claim #    Claim Date       Amount            |")
         print(f"   |------------------------------------------------------------|")
         for display_claim in DisplayClaims:
-            print(f"   |                {display_claim['number']:>5s},   {display_claim['date']:>10s},   {display_claim['amount']:>9s}            |")
+            print(f"   |                {display_claim['number']:>5s},   {display_claim['date']:>11s},   {display_claim['amount']:>9s}           |")
     else:
         print(f"   |____________________________________________________________|")
         print(f"   |            --------  Claim(s) Details  --------            |")
@@ -637,6 +675,7 @@ def generate_and_display_receipt(customer_info, claims, premium_details, hst, to
     print(f"")
     print(f"Your policy data for policy number {DisplayPolicyNumber} has been saved successfully.")
     print()
+
 
 
 #   |-------------------------|   #
@@ -688,7 +727,7 @@ def process_insurance_policy():
     hst, total_cost = calculate_total_cost(total_premium)
 
     # Step 5: Collect payment information
-    payment_method, down_payment = get_payment_info()
+    payment_method, down_payment = get_payment_info(total_cost)
 
     # Step 6: Calculate monthly payments if necessary
     monthly_payment = calculate_monthly_payments(total_cost, payment_method, down_payment)
