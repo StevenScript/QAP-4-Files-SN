@@ -1,6 +1,4 @@
 # QAP-4-Files-SN
-<<<<<<< HEAD
-
 Web development folder containing:
 
 - HTML
@@ -9,7 +7,11 @@ Web development folder containing:
 Python folder containing:
 
 - One Stop Insurance Program
+
+
+
 =======
+previous
 One Stop Insurance Program - File + Readme for QAP 4
 
 Insurance Policy Management and Calculation System for One Stop Insurance
